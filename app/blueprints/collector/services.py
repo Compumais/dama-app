@@ -287,7 +287,7 @@ def _export_collection_csv(collection: Collection) -> str:
         code = (item.product.internal_code if item.product and item.product.internal_code else item.scanned_code) or ""
         qty = Decimal(str(item.quantity))
         qty_str = format(qty.normalize(), "f")
-        lines.append(f"{code}|{qty_str}")
+        lines.append(f"{code};{qty_str}")
 
     target_path.write_text("\n".join(lines), encoding="utf-8")
     return str(target_path)
