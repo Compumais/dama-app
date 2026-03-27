@@ -1,5 +1,5 @@
 /* Basic PWA service worker for offline-first static assets. */
-const CACHE_NAME = "coletor-dama-v1";
+const CACHE_NAME = "coletor-dama-v2";
 const PRECACHE_URLS = [
   "/",
   "/static/css/app.css",
