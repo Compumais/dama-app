@@ -1,261 +1,272 @@
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>{% block title %}Coletor DAMA{% endblock %}</title>
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest', v='20260326-2') }}">
-    <meta name="theme-color" content="#4a65ae">
-    <link rel="icon" href="{{ url_for('static', filename='img/icon-192.png', v='20260326-1') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-192.png', v='20260326-1') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20260326-9') }}">
-    {% block extra_head %}{% endblock %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>{% block title %}Coletor DAMA{% endblock %}</title>
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest', v='20260326-2') }}">
+  <meta name="theme-color" content="#4a65ae">
+  <link rel="icon" href="{{ url_for('static', filename='img/icon-192.png', v='20260326-1') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-192.png', v='20260326-1') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20260326-9') }}">
+  {% block extra_head %}{% endblock %}
 </head>
 {% set endpoint = request.endpoint or '' %}
 {% set role_name = current_user.role.name if current_user.is_authenticated and current_user.role else 'Sem perfil' %}
 {% set nav_slug = (current_user.role.slug if current_user.is_authenticated and current_user.role else '')|lower %}
 {% if nav_slug == 'acougueiro' %}
-    {% set requests_nav_url = url_for('requests.index', status='pendente') %}
+{% set requests_nav_url = url_for('requests.index', status='pendente') %}
 {% elif nav_slug in ['solicitante_filial', 'gestor_consulta', 'administrador'] %}
-    {% set requests_nav_url = url_for('requests.mine', status='pendente') %}
+{% set requests_nav_url = url_for('requests.mine', status='pendente') %}
 {% else %}
-    {% set requests_nav_url = url_for('dashboard.home') %}
+{% set requests_nav_url = url_for('dashboard.home') %}
 {% endif %}
 {% set full_screen = endpoint.startswith('collector.') or endpoint.startswith('requests.') %}
+
 <body class="{% if full_screen %}collector-layout{% endif %}">
-<div class="app-shell">
+  <div class="app-shell">
     <header class="app-header">
-        <div class="app-header-inner">
-            <a class="brand" href="{{ url_for('dashboard.home') }}">
-                <span class="brand-mark">DM</span>
-                <span class="brand-copy">
-                    <span class="brand-title">Coletor DAMA</span>
-                    <span class="brand-subtitle">Operação, estoque e coleta em um só fluxo</span>
-                </span>
-            </a>
+      <div class="app-header-inner">
+        <a class="brand" href="{{ url_for('dashboard.home') }}">
+          <img src="/static/img/logo.png" alt="" style="max-height: 60px;">
+          <span class="brand-copy">
+            <span class="brand-title">Coletor DAMA</span>
+            <span class="brand-subtitle">Operação, estoque e coleta em um só fluxo</span>
+          </span>
+        </a>
 
-            <nav class="desktop-nav" aria-label="Navegação principal">
-                <a class="nav-pill {% if endpoint.startswith('dashboard.') %}active{% endif %}" href="{{ url_for('dashboard.home') }}">Dashboard</a>
-                <a class="nav-pill {% if endpoint.startswith('requests.') %}active{% endif %}" href="{{ requests_nav_url }}">Requisições</a>
-                {% if nav_slug in ['acougueiro', 'administrador'] %}
-                <a class="nav-pill {% if endpoint.startswith('collector.') %}active{% endif %}" href="{{ url_for('collector.index') }}">Coletor</a>
-                {% endif %}
-                {% if nav_slug == 'administrador' %}
-                <a class="nav-pill {% if endpoint.startswith('admin.') %}active{% endif %}" href="{{ url_for('admin.index') }}">Admin</a>
-                {% endif %}
-            </nav>
+        <nav class="desktop-nav" aria-label="Navegação principal">
+          <a class="nav-pill {% if endpoint.startswith('dashboard.') %}active{% endif %}"
+            href="{{ url_for('dashboard.home') }}">Dashboard</a>
+          <a class="nav-pill {% if endpoint.startswith('requests.') %}active{% endif %}"
+            href="{{ requests_nav_url }}">Requisições</a>
+          {% if nav_slug in ['acougueiro', 'administrador'] %}
+          <a class="nav-pill {% if endpoint.startswith('collector.') %}active{% endif %}"
+            href="{{ url_for('collector.index') }}">Coletor</a>
+          {% endif %}
+          {% if nav_slug == 'administrador' %}
+          <a class="nav-pill {% if endpoint.startswith('admin.') %}active{% endif %}"
+            href="{{ url_for('admin.index') }}">Admin</a>
+          {% endif %}
+        </nav>
 
-            {% if current_user.is_authenticated %}
-                <div class="header-user">
-                    <div class="header-user-copy">
-                        <span class="user-name">{{ current_user.full_name }}</span>
-                        <span class="user-role">{{ role_name }}</span>
-                    </div>
-                    <a class="button-secondary button-link" href="{{ url_for('auth.logout') }}">Sair</a>
-                </div>
-            {% else %}
-                <a class="button-secondary button-link" href="{{ url_for('auth.login') }}">Entrar</a>
-            {% endif %}
+        {% if current_user.is_authenticated %}
+        <div class="header-user">
+          <div class="header-user-copy">
+            <span class="user-name">{{ current_user.full_name }}</span>
+            <span class="user-role">{{ role_name }}</span>
+          </div>
+          <a class="button-secondary button-link" href="{{ url_for('auth.logout') }}">Sair</a>
         </div>
+        {% else %}
+        <a class="button-secondary button-link" href="{{ url_for('auth.login') }}">Entrar</a>
+        {% endif %}
+      </div>
     </header>
 
     <main class="page-shell">
-        <div class="page-stack">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="flash-stack">
-                        {% for category, message in messages %}
-                            <div class="flash flash-{{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
-            {% block content %}{% endblock %}
+      <div class="page-stack">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-stack">
+          {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
         </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
     </main>
 
     {% if current_user.is_authenticated and not full_screen %}
-        <nav class="mobile-nav" aria-label="Navegação mobile">
-            <a class="mobile-nav-link {% if endpoint.startswith('dashboard.') %}active{% endif %}" href="{{ url_for('dashboard.home') }}">
-                <span class="mobile-nav-icon">Inicio</span>
-                <span>Dashboard</span>
-            </a>
-            <a class="mobile-nav-link {% if endpoint.startswith('requests.') %}active{% endif %}" href="{{ requests_nav_url }}">
-                <span class="mobile-nav-icon">Fluxo</span>
-                <span>Pedidos</span>
-            </a>
-            {% if nav_slug in ['acougueiro', 'administrador'] %}
-            <a class="mobile-nav-link {% if endpoint.startswith('collector.') %}active{% endif %}" href="{{ url_for('collector.index') }}">
-                <span class="mobile-nav-icon">Scan</span>
-                <span>Coletor</span>
-            </a>
-            {% endif %}
-            {% if nav_slug == 'administrador' %}
-            <a class="mobile-nav-link {% if endpoint.startswith('admin.') %}active{% endif %}" href="{{ url_for('admin.index') }}">
-                <span class="mobile-nav-icon">Base</span>
-                <span>Admin</span>
-            </a>
-            {% endif %}
-        </nav>
+    <nav class="mobile-nav" aria-label="Navegação mobile">
+      <a class="mobile-nav-link {% if endpoint.startswith('dashboard.') %}active{% endif %}"
+        href="{{ url_for('dashboard.home') }}">
+        <span class="mobile-nav-icon">Inicio</span>
+        <span>Dashboard</span>
+      </a>
+      <a class="mobile-nav-link {% if endpoint.startswith('requests.') %}active{% endif %}"
+        href="{{ requests_nav_url }}">
+        <span class="mobile-nav-icon">Fluxo</span>
+        <span>Pedidos</span>
+      </a>
+      {% if nav_slug in ['acougueiro', 'administrador'] %}
+      <a class="mobile-nav-link {% if endpoint.startswith('collector.') %}active{% endif %}"
+        href="{{ url_for('collector.index') }}">
+        <span class="mobile-nav-icon">Scan</span>
+        <span>Coletor</span>
+      </a>
+      {% endif %}
+      {% if nav_slug == 'administrador' %}
+      <a class="mobile-nav-link {% if endpoint.startswith('admin.') %}active{% endif %}"
+        href="{{ url_for('admin.index') }}">
+        <span class="mobile-nav-icon">Base</span>
+        <span>Admin</span>
+      </a>
+      {% endif %}
+    </nav>
     {% endif %}
-</div>
-{% block extra_body %}{% endblock %}
+  </div>
+  {% block extra_body %}{% endblock %}
 
-<div id="pwa-install-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-install-title">
+  <div id="pwa-install-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-install-title">
     <div class="modal-card" role="document">
-        <div class="modal-head">
-            <p class="modal-title" id="pwa-install-title">Instalar aplicativo</p>
-            <p class="modal-subtitle" id="pwa-install-subtitle">Instale para usar em tela cheia e acesso rapido.</p>
+      <div class="modal-head">
+        <p class="modal-title" id="pwa-install-title">Instalar aplicativo</p>
+        <p class="modal-subtitle" id="pwa-install-subtitle">Instale para usar em tela cheia e acesso rapido.</p>
+      </div>
+      <div class="modal-body">
+        <div id="pwa-install-body" class="muted"></div>
+      </div>
+      <div class="modal-actions">
+        <div class="modal-actions-row">
+          <button type="button" id="pwa-install-cancel" class="button-secondary">Agora nao</button>
+          <button type="button" id="pwa-install-confirm" class="button">Instalar</button>
         </div>
-        <div class="modal-body">
-            <div id="pwa-install-body" class="muted"></div>
-        </div>
-        <div class="modal-actions">
-            <div class="modal-actions-row">
-                <button type="button" id="pwa-install-cancel" class="button-secondary">Agora nao</button>
-                <button type="button" id="pwa-install-confirm" class="button">Instalar</button>
-            </div>
-        </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<script>
-(() => {
-  if (!("serviceWorker" in navigator)) return;
-  if (!window.isSecureContext) return;
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
-  });
-})();
-</script>
+  <script>
+    (() => {
+      if (!("serviceWorker" in navigator)) return;
+      if (!window.isSecureContext) return;
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => { });
+      });
+    })();
+  </script>
 
-<script>
-(() => {
-  const modalEl = document.getElementById("pwa-install-modal");
-  const bodyEl = document.getElementById("pwa-install-body");
-  const cancelBtn = document.getElementById("pwa-install-cancel");
-  const confirmBtn = document.getElementById("pwa-install-confirm");
+  <script>
+    (() => {
+      const modalEl = document.getElementById("pwa-install-modal");
+      const bodyEl = document.getElementById("pwa-install-body");
+      const cancelBtn = document.getElementById("pwa-install-cancel");
+      const confirmBtn = document.getElementById("pwa-install-confirm");
 
-  const isStandalone =
-    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
-    // iOS Safari
-    (window.navigator && window.navigator.standalone === true);
+      const isStandalone =
+        (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+        // iOS Safari
+        (window.navigator && window.navigator.standalone === true);
 
-  let deferredPrompt = null;
+      let deferredPrompt = null;
 
-  window.addEventListener("beforeinstallprompt", (event) => {
-    // Hide the native mini-infobar and allow triggering on user gesture.
-    event.preventDefault();
-    deferredPrompt = event;
-  });
+      window.addEventListener("beforeinstallprompt", (event) => {
+        // Hide the native mini-infobar and allow triggering on user gesture.
+        event.preventDefault();
+        deferredPrompt = event;
+      });
 
-  function openModal() {
-    if (!modalEl) return;
+      function openModal() {
+        if (!modalEl) return;
 
-    if (isStandalone) {
-      bodyEl.textContent = "Este sistema ja esta instalado como aplicativo.";
-      confirmBtn.style.display = "none";
-      modalEl.classList.add("open");
-      return;
-    }
+        if (isStandalone) {
+          bodyEl.textContent = "Este sistema ja esta instalado como aplicativo.";
+          confirmBtn.style.display = "none";
+          modalEl.classList.add("open");
+          return;
+        }
 
-    // If the browser supports prompting, show install button; otherwise show instructions.
-    if (deferredPrompt && window.isSecureContext) {
-      bodyEl.textContent = "Toque em Instalar para adicionar este sistema como aplicativo.";
-      confirmBtn.style.display = "";
-      confirmBtn.disabled = false;
-    } else {
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || "");
-      if (isIOS) {
-        bodyEl.textContent = "No iPhone/iPad: toque em Compartilhar e depois em Adicionar a Tela de Inicio.";
-      } else {
-        bodyEl.textContent = "Abra o menu do navegador e escolha Instalar app ou Adicionar a tela inicial.";
+        // If the browser supports prompting, show install button; otherwise show instructions.
+        if (deferredPrompt && window.isSecureContext) {
+          bodyEl.textContent = "Toque em Instalar para adicionar este sistema como aplicativo.";
+          confirmBtn.style.display = "";
+          confirmBtn.disabled = false;
+        } else {
+          const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+          if (isIOS) {
+            bodyEl.textContent = "No iPhone/iPad: toque em Compartilhar e depois em Adicionar a Tela de Inicio.";
+          } else {
+            bodyEl.textContent = "Abra o menu do navegador e escolha Instalar app ou Adicionar a tela inicial.";
+          }
+          confirmBtn.style.display = "none";
+        }
+
+        modalEl.classList.add("open");
       }
-      confirmBtn.style.display = "none";
-    }
 
-    modalEl.classList.add("open");
-  }
+      function closeModal() {
+        modalEl.classList.remove("open");
+      }
 
-  function closeModal() {
-    modalEl.classList.remove("open");
-  }
+      async function doInstall() {
+        if (!deferredPrompt) return;
+        confirmBtn.disabled = true;
+        try {
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+        } catch (_e) {
+        } finally {
+          deferredPrompt = null;
+          closeModal();
+        }
+      }
 
-  async function doInstall() {
-    if (!deferredPrompt) return;
-    confirmBtn.disabled = true;
-    try {
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-    } catch (_e) {
-    } finally {
-      deferredPrompt = null;
-      closeModal();
-    }
-  }
+      cancelBtn.addEventListener("click", closeModal);
+      confirmBtn.addEventListener("click", doInstall);
+      modalEl.addEventListener("click", (event) => {
+        if (event.target === modalEl) closeModal();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (!modalEl.classList.contains("open")) return;
+        if (event.key === "Escape") closeModal();
+      });
 
-  cancelBtn.addEventListener("click", closeModal);
-  confirmBtn.addEventListener("click", doInstall);
-  modalEl.addEventListener("click", (event) => {
-    if (event.target === modalEl) closeModal();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (!modalEl.classList.contains("open")) return;
-    if (event.key === "Escape") closeModal();
-  });
+      // Secret gesture: 5 taps/clicks near the center opens install modal.
+      let tapCount = 0;
+      let lastTapAt = 0;
 
-  // Secret gesture: 5 taps/clicks near the center opens install modal.
-  let tapCount = 0;
-  let lastTapAt = 0;
+      function isInCenter(clientX, clientY) {
+        const w = window.innerWidth || 1;
+        const h = window.innerHeight || 1;
+        const minX = w * 0.25;
+        const maxX = w * 0.75;
+        const minY = h * 0.25;
+        const maxY = h * 0.75;
+        return clientX >= minX && clientX <= maxX && clientY >= minY && clientY <= maxY;
+      }
 
-  function isInCenter(clientX, clientY) {
-    const w = window.innerWidth || 1;
-    const h = window.innerHeight || 1;
-    const minX = w * 0.25;
-    const maxX = w * 0.75;
-    const minY = h * 0.25;
-    const maxY = h * 0.75;
-    return clientX >= minX && clientX <= maxX && clientY >= minY && clientY <= maxY;
-  }
+      function registerTap(clientX, clientY) {
+        if (!isInCenter(clientX, clientY)) return;
 
-  function registerTap(clientX, clientY) {
-    if (!isInCenter(clientX, clientY)) return;
+        const now = Date.now();
+        if (now - lastTapAt > 1200) {
+          tapCount = 0;
+        }
+        lastTapAt = now;
+        tapCount += 1;
 
-    const now = Date.now();
-    if (now - lastTapAt > 1200) {
-      tapCount = 0;
-    }
-    lastTapAt = now;
-    tapCount += 1;
+        if (tapCount >= 5) {
+          tapCount = 0;
+          openModal();
+        }
+      }
 
-    if (tapCount >= 5) {
-      tapCount = 0;
-      openModal();
-    }
-  }
+      document.addEventListener("pointerup", (event) => {
+        // Avoid triggering while modal is open.
+        if (modalEl.classList.contains("open")) return;
+        // Ignore right-click.
+        if (event.button && event.button !== 0) return;
+        registerTap(event.clientX, event.clientY);
+      });
 
-  document.addEventListener("pointerup", (event) => {
-    // Avoid triggering while modal is open.
-    if (modalEl.classList.contains("open")) return;
-    // Ignore right-click.
-    if (event.button && event.button !== 0) return;
-    registerTap(event.clientX, event.clientY);
-  });
+      // Fallbacks for browsers that don't dispatch pointer events reliably on touch.
+      document.addEventListener("click", (event) => {
+        if (modalEl.classList.contains("open")) return;
+        const e = event;
+        registerTap(e.clientX, e.clientY);
+      });
 
-  // Fallbacks for browsers that don't dispatch pointer events reliably on touch.
-  document.addEventListener("click", (event) => {
-    if (modalEl.classList.contains("open")) return;
-    const e = event;
-    registerTap(e.clientX, e.clientY);
-  });
-
-  document.addEventListener("touchend", (event) => {
-    if (modalEl.classList.contains("open")) return;
-    const touch = (event.changedTouches && event.changedTouches[0]) || null;
-    if (!touch) return;
-    registerTap(touch.clientX, touch.clientY);
-  }, { passive: true });
-})();
-</script>
+      document.addEventListener("touchend", (event) => {
+        if (modalEl.classList.contains("open")) return;
+        const touch = (event.changedTouches && event.changedTouches[0]) || null;
+        if (!touch) return;
+        registerTap(touch.clientX, touch.clientY);
+      }, { passive: true });
+    })();
+  </script>
 </body>
+
 </html>
