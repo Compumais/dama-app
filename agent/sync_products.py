@@ -32,9 +32,14 @@ def _vps_sync_endpoint() -> str:
     return f"{base_url}/api/sync/products"
 
 
-def _vps_finalizadas_endpoint() -> str:
+def _vps_finalizadas_list_url() -> str:
     base_url = _required_env("VPS_API_URL").rstrip("/")
     return f"{base_url}/api/sync/finalizadas"
+
+
+def _vps_finalizadas_download_url() -> str:
+    base_url = _required_env("VPS_API_URL").rstrip("/")
+    return f"{base_url}/api/sync/finalizadas/download"
 
 
 def _batch_size() -> int:
@@ -153,56 +158,79 @@ def _run_products_sync(engine, endpoint: str, sync_api_key: str, batch_size: int
     print("[products] sincronizacao concluida")
 
 
-def _sync_finalizadas_once(
+def _pull_finalizadas_once(
     finalizadas_dir: Path,
-    endpoint: str,
+    list_url: str,
+    download_url: str,
     sync_api_key: str,
-    state: dict[str, tuple[float, int, str]],
+    state: dict[str, str],
 ) -> None:
-    if not finalizadas_dir.exists():
+    """
+    Baixa CSVs gerados no VPS (finalizadas/) para a pasta local do agent.
+    """
+    finalizadas_dir.mkdir(parents=True, exist_ok=True)
+
+    headers = {"X-API-KEY": sync_api_key}
+    try:
+        response = requests.get(list_url, headers=headers, timeout=60)
+    except requests.RequestException as exc:
+        print(f"[finalizadas] erro ao listar no VPS: {exc}")
         return
 
-    for file_path in sorted(finalizadas_dir.glob("*.csv")):
+    response_data = _safe_response_json(response)
+    if response.status_code != 200 or not response_data.get("success"):
+        print(
+            f"[finalizadas] erro ao listar: status={response.status_code} resp={response_data}"
+        )
+        return
+
+    files = response_data.get("files") or []
+    for meta in files:
+        name = (meta.get("name") or "").strip()
+        remote_sha = (meta.get("sha256") or "").strip().lower()
+        if not name or not remote_sha:
+            continue
+        if state.get(name) == remote_sha:
+            continue
+
         try:
-            stat = file_path.stat()
-            mtime = stat.st_mtime
-            size = stat.st_size
-            cache_key = str(file_path.resolve())
-            previous = state.get(cache_key)
-
-            if previous and previous[0] == mtime and previous[1] == size:
-                continue
-
-            content = file_path.read_bytes()
-            sha256 = _sha256_bytes(content)
-            if previous and previous[2] == sha256:
-                state[cache_key] = (mtime, size, sha256)
-                continue
-
-            payload = {
-                "filename": file_path.name,
-                "content_base64": base64.b64encode(content).decode("ascii"),
-                "sha256": sha256,
-                "mtime": mtime,
-            }
-            response = requests.post(
-                endpoint,
-                json=payload,
-                headers={"X-API-KEY": sync_api_key},
-                timeout=60,
+            r2 = requests.get(
+                download_url,
+                params={"filename": name},
+                headers=headers,
+                timeout=120,
             )
-            response_data = _safe_response_json(response)
-            if response.status_code != 200 or not response_data.get("success"):
-                print(
-                    f"[finalizadas] erro ao enviar {file_path.name}: "
-                    f"status={response.status_code} resp={response_data}"
-                )
-                continue
+        except requests.RequestException as exc:
+            print(f"[finalizadas] erro ao baixar {name}: {exc}")
+            continue
 
-            state[cache_key] = (mtime, size, sha256)
-            print(f"[finalizadas] sincronizado: {file_path.name}")
-        except Exception as exc:
-            print(f"[finalizadas] falha em {file_path.name}: {exc}")
+        data2 = _safe_response_json(r2)
+        if r2.status_code != 200 or not data2.get("success"):
+            print(
+                f"[finalizadas] erro ao baixar {name}: status={r2.status_code} resp={data2}"
+            )
+            continue
+
+        b64 = data2.get("content_base64") or ""
+        sent_sha = (data2.get("sha256") or "").strip().lower()
+        try:
+            raw = base64.b64decode(b64)
+        except Exception:
+            print(f"[finalizadas] base64 invalido: {name}")
+            continue
+
+        calc = _sha256_bytes(raw)
+        if sent_sha and sent_sha != calc:
+            print(f"[finalizadas] sha256 divergente no download: {name}")
+            continue
+        if calc != remote_sha:
+            print(f"[finalizadas] sha256 divergente lista vs corpo: {name}")
+            continue
+
+        out_path = finalizadas_dir / name
+        out_path.write_bytes(raw)
+        state[name] = remote_sha
+        print(f"[finalizadas] baixado do VPS: {name}")
 
 
 def main() -> None:
@@ -212,14 +240,15 @@ def main() -> None:
     engine = create_engine(external_db_url, pool_pre_ping=True)
 
     products_endpoint = _vps_sync_endpoint()
-    finalizadas_endpoint = _vps_finalizadas_endpoint()
+    finalizadas_list_url = _vps_finalizadas_list_url()
+    finalizadas_download_url = _vps_finalizadas_download_url()
     sync_api_key = _required_env("SYNC_API_KEY")
 
     batch_size = _batch_size()
     sync_interval = _sync_interval_seconds()
     poll_interval = _finalizadas_poll_seconds()
     finalizadas_dir = _finalizadas_dir()
-    finalizadas_state: dict[str, tuple[float, int, str]] = {}
+    finalizadas_state: dict[str, str] = {}
 
     print(
         "[agent] iniciado com "
@@ -244,9 +273,10 @@ def main() -> None:
             finally:
                 next_products_sync_at = time.time() + sync_interval
 
-        _sync_finalizadas_once(
+        _pull_finalizadas_once(
             finalizadas_dir=finalizadas_dir,
-            endpoint=finalizadas_endpoint,
+            list_url=finalizadas_list_url,
+            download_url=finalizadas_download_url,
             sync_api_key=sync_api_key,
             state=finalizadas_state,
         )

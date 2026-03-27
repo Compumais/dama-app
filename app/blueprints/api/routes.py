@@ -66,22 +66,95 @@ def sync_products():
     return jsonify(result), status_code
 
 
+def _sync_api_key_auth() -> tuple[bool, str]:
+    load_dotenv(BASE_DIR / ".env")
+    expected_key = os.getenv("SYNC_API_KEY", "") or current_app.config.get("SYNC_API_KEY", "")
+    provided_key = request.headers.get("X-API-KEY", "")
+    if not expected_key:
+        return False, "SYNC_API_KEY nao configurada."
+    if not provided_key or provided_key != expected_key:
+        return False, "Nao autorizado."
+    return True, ""
+
+
+@api_bp.get("/sync/finalizadas")
+@csrf.exempt
+def list_finalizadas_sync():
+    """
+    Lista CSVs gerados no VPS em finalizadas/ (coletor).
+    O agent baixa para a maquina local (pull).
+    """
+    ok, msg = _sync_api_key_auth()
+    if not ok:
+        code = 500 if "SYNC_API_KEY nao configurada" in msg else 401
+        return jsonify({"success": False, "message": msg}), code
+
+    final_dir = Path(BASE_DIR) / "finalizadas"
+    if not final_dir.is_dir():
+        return jsonify({"success": True, "files": []}), 200
+
+    files_out = []
+    for p in sorted(final_dir.glob("*.csv")):
+        try:
+            raw = p.read_bytes()
+            st = p.stat()
+            files_out.append(
+                {
+                    "name": p.name,
+                    "size": st.st_size,
+                    "mtime": st.st_mtime,
+                    "sha256": hashlib.sha256(raw).hexdigest().lower(),
+                }
+            )
+        except OSError:
+            continue
+
+    return jsonify({"success": True, "files": files_out}), 200
+
+
+@api_bp.get("/sync/finalizadas/download")
+@csrf.exempt
+def download_finalizada_sync():
+    """
+    Download de um CSV de finalizadas/ (conteudo em base64 + sha256).
+    """
+    ok, msg = _sync_api_key_auth()
+    if not ok:
+        code = 500 if "SYNC_API_KEY nao configurada" in msg else 401
+        return jsonify({"success": False, "message": msg}), code
+
+    filename = (request.args.get("filename") or "").strip()
+    safe_name = Path(filename).name
+    if not safe_name.lower().endswith(".csv"):
+        return jsonify({"success": False, "message": "Nome invalido."}), 400
+
+    final_dir = (Path(BASE_DIR) / "finalizadas").resolve()
+    target = (final_dir / safe_name).resolve()
+    if target.parent != final_dir or not target.is_file():
+        return jsonify({"success": False, "message": "Arquivo nao encontrado."}), 404
+
+    file_bytes = target.read_bytes()
+    digest = hashlib.sha256(file_bytes).hexdigest().lower()
+    return jsonify(
+        {
+            "success": True,
+            "filename": safe_name,
+            "sha256": digest,
+            "content_base64": base64.b64encode(file_bytes).decode("ascii"),
+        }
+    ), 200
+
+
 @api_bp.post("/sync/finalizadas")
 @csrf.exempt
 def sync_finalizadas():
     """
-    Recebe arquivos CSV de finalizadas enviados pelo agent.
+    Recebe arquivos CSV de finalizadas enviados pelo agent (opcional / legado).
     """
-    load_dotenv(BASE_DIR / ".env")
-
-    expected_key = os.getenv("SYNC_API_KEY", "") or current_app.config.get("SYNC_API_KEY", "")
-    provided_key = request.headers.get("X-API-KEY", "")
-
-    if not expected_key:
-        return jsonify({"success": False, "message": "SYNC_API_KEY nao configurada."}), 500
-
-    if not provided_key or provided_key != expected_key:
-        return jsonify({"success": False, "message": "Nao autorizado."}), 401
+    ok, msg = _sync_api_key_auth()
+    if not ok:
+        code = 500 if "SYNC_API_KEY nao configurada" in msg else 401
+        return jsonify({"success": False, "message": msg}), code
 
     payload = request.get_json(silent=True) or {}
     filename = (payload.get("filename") or "").strip()
