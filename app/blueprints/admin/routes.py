@@ -114,6 +114,37 @@ def users():
     return render_template("admin/users.html", form=form, user_list=user_list)
 
 
+
+@admin_bp.route("/users/edit/<int:user_id>", methods=["GET", "POST"])
+@login_required
+@role_required("administrador")
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+    form = UserForm(obj=user)
+    return render_template("admin/users_edit.html", form=form, user=user)
+
+    if form.validate_on_submit():
+        user.full_name = form.full_name.data.strip()
+        user.email = form.email.data.strip().lower()
+        user.role_id = form.role_id.data
+        user.branch_id = form.branch_id.data or None
+        user.active = form.active.data
+        db.session.commit()
+        flash("Usuario atualizado com sucesso.", "success")
+        return redirect(url_for("admin.users"))
+
+    return render_template("admin/users_edit.html", form=form, user=user)
+
+@admin_bp.route("/users/delete/<int:user_id>", methods=["GET", "POST"])
+@login_required
+@role_required("administrador")
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    db.session.delete(user)
+    db.session.commit()
+    flash("Usuario deletado com sucesso.", "success")
+    return redirect(url_for("admin.users"))
+
 @admin_bp.errorhandler(403)
 def admin_forbidden(_error):
     flash("Voce nao possui permissao para acessar o modulo administrativo.", "danger")
