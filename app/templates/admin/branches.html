@@ -42,20 +42,105 @@
                     <th>Nome</th>
                     <th>Código</th>
                     <th>Status</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
-            {% for branch in branch_list %}
+                {% for branch in branch_list %}
                 <tr>
                     <td>{{ branch.name }}</td>
                     <td>{{ branch.code }}</td>
                     <td><span class="badge badge-neutral">{{ "Ativa" if branch.active else "Inativa" }}</span></td>
+                    <td>
+                        <button
+                            type="button"
+                            class="button-secondary button-link branch-edit-open"
+                            data-edit-url="{{ url_for('admin.edit_branch', branch_id=branch.id) }}"
+                            data-name="{{ branch.name|e }}"
+                            data-code="{{ branch.code|e }}"
+                            data-active="{{ 1 if branch.active else 0 }}"
+                        >Editar</button>
+                        <a href="{{ url_for('admin.delete_branch', branch_id=branch.id) }}" class="button-secondary button-link">Deletar</a>
+                    </td>
                 </tr>
-            {% else %}
-                <tr><td colspan="3">Nenhuma filial cadastrada.</td></tr>
-            {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="4">Nenhuma filial cadastrada.</td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
 </section>
+
+<div id="branch-edit-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="branch-edit-modal-title">
+    <div class="modal-card" role="document">
+        <div class="modal-head">
+            <p class="modal-title" id="branch-edit-modal-title">Editar filial</p>
+            <p class="modal-subtitle">Altere os dados e salve a filial.</p>
+        </div>
+        <form id="branch-edit-modal-form" method="post" action="" class="modal-body form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="field">
+                <label for="branch-edit-name">Nome</label>
+                <input type="text" id="branch-edit-name" name="name" required maxlength="120">
+            </div>
+            <div class="field">
+                <label for="branch-edit-code">Código</label>
+                <input type="text" id="branch-edit-code" name="code" required maxlength="20">
+            </div>
+            <label class="checkbox-row">
+                <input type="checkbox" id="branch-edit-active" name="active">
+                <span>Ativa</span>
+            </label>
+            <div class="modal-actions field-span-2">
+                <div class="modal-actions-row">
+                    <button type="button" id="branch-edit-cancel" class="button-secondary">Cancelar</button>
+                    <button type="submit" class="button">Salvar filial</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+(() => {
+    const modal = document.getElementById("branch-edit-modal");
+    const form = document.getElementById("branch-edit-modal-form");
+    if (!modal || !form) return;
+
+    const nameEl = document.getElementById("branch-edit-name");
+    const codeEl = document.getElementById("branch-edit-code");
+    const activeEl = document.getElementById("branch-edit-active");
+    const cancelBtn = document.getElementById("branch-edit-cancel");
+
+    function openModal(btn) {
+        form.action = btn.dataset.editUrl || "";
+        if (nameEl) nameEl.value = btn.dataset.name || "";
+        if (codeEl) codeEl.value = btn.dataset.code || "";
+        if (activeEl) activeEl.checked = btn.dataset.active === "1";
+        modal.classList.add("open");
+    }
+
+    function closeModal() {
+        modal.classList.remove("open");
+    }
+
+    document.querySelectorAll(".branch-edit-open").forEach((btn) => {
+        btn.addEventListener("click", () => openModal(btn));
+    });
+
+    cancelBtn.addEventListener("click", closeModal);
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+    });
+})();
+</script>
 {% endblock %}

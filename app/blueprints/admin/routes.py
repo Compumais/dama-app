@@ -46,6 +46,39 @@ def branches():
     return render_template("admin/branches.html", form=form, branch_list=branch_list)
 
 
+@admin_bp.route("/branches/edit/<int:branch_id>", methods=["GET", "POST"])
+@login_required
+@role_required("administrador")
+def edit_branch(branch_id):
+    branch = Branch.query.get_or_404(branch_id)
+    form = BranchForm(obj=branch)
+    if form.validate_on_submit():
+        branch.name = form.name.data.strip()
+        branch.code = form.code.data.strip().upper()
+        branch.active = form.active.data
+        db.session.commit()
+        flash("Filial atualizada com sucesso.", "success")
+        return redirect(url_for("admin.branches"))
+    
+    branch_list = Branch.query.order_by(Branch.name.asc()).all()
+    return render_template("admin/branches.html", form=form, branch_list=branch_list)
+
+
+@admin_bp.route("/branches/delete/<int:branch_id>", methods=["GET", "POST"])
+@login_required
+@role_required("administrador")
+def delete_branch(branch_id):
+    branch = Branch.query.get_or_404(branch_id)
+    
+    # Check for linked users or requests
+    if branch.users.first() or branch.stock_requests.first():
+        flash("Nao e possivel deletar esta filial pois ela possui usuarios ou requisicoes vinculadas. Inative-a em vez disso.", "danger")
+        return redirect(url_for("admin.branches"))
+
+    db.session.delete(branch)
+    db.session.commit()
+    flash("Filial deletada com sucesso.", "success")
+    return redirect(url_for("admin.branches"))
 @admin_bp.route("/products", methods=["GET", "POST"])
 @login_required
 @role_required("administrador")
