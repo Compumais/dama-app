@@ -9,7 +9,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 csrf = CSRFProtect()
-socketio = SocketIO(async_mode="threading", cors_allowed_origins="*")
+socketio = SocketIO(async_mode="eventlet", cors_allowed_origins="*")
 
 login_manager.login_view = "auth.login"
 login_manager.login_message = "Faça login para acessar esta página."
