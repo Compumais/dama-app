@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Usuários{% endblock %}
+{% block content %}
+<section class="card">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Cadastro</span>
+            <h1>Usuários</h1>
+        </div>
+    </div>
+    <form method="post" class="form-grid">
+        {{ form.hidden_tag() }}
+        <div class="field">
+            {{ form.full_name.label }}
+            {{ form.full_name() }}
+        </div>
+        <div class="field">
+            {{ form.email.label }}
+            {{ form.email() }}
+        </div>
+        <div class="field">
+            {{ form.password.label }}
+            {{ form.password() }}
+        </div>
+        <div class="field">
+            {{ form.role_id.label }}
+            {{ form.role_id() }}
+        </div>
+        <div class="field">
+            {{ form.branch_id.label }}
+            {{ form.branch_id() }}
+        </div>
+        <label class="checkbox-row">
+            {{ form.active() }}
+            <span>{{ form.active.label.text }}</span>
+        </label>
+        <div class="form-actions field-span-2">
+            <button type="submit">{{ form.submit.label.text }}</button>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Visão geral</span>
+            <h2>Lista de usuários</h2>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>E-mail</th>
+                    <th>Perfil</th>
+                    <th>Filial</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for user in user_list %}
+                <tr>
+                    <td>{{ user.full_name }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.role.name if user.role else "-" }}</td>
+                    <td>{{ user.branch.name if user.branch else "-" }}</td>
+                    <td><span class="badge badge-neutral">{{ "Ativo" if user.active else "Inativo" }}</span></td>
+                    <td>
+                        <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="button-secondary button-link">Editar</a>
+                        <a href="{{ url_for('admin.delete_user', user_id=user.id) }}" class="button-secondary button-link">Deletar</a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5">Nenhum usuário cadastrado.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

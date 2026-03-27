@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<section class="hero-card">
+    <div class="hero-layout">
+        <div>
+            <span class="eyebrow">Base do sistema</span>
+            <h1 class="hero-title">Administração mais legível e menos pesada.</h1>
+            <p class="hero-copy">
+                A área administrativa foi ajustada para parecer parte da mesma plataforma, com navegação e hierarquia visual mais claras.
+            </p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">Usuários</span>
+                <span class="stat-value">{{ overview.users }}</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Filiais</span>
+                <span class="stat-value">{{ overview.branches }}</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Produtos</span>
+                <span class="stat-value">{{ overview.products }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="module-grid">
+    <a class="module-link" href="{{ url_for('admin.users') }}">
+        <span class="module-kicker">Cadastro</span>
+        <span class="module-title">Usuários</span>
+        <span class="module-description">Crie contas e defina perfil e filial de cada pessoa da operação.</span>
+    </a>
+    <a class="module-link" href="{{ url_for('admin.branches') }}">
+        <span class="module-kicker">Estrutura</span>
+        <span class="module-title">Filiais</span>
+        <span class="module-description">Gerencie as unidades disponíveis para requisição e coleta.</span>
+    </a>
+    <a class="module-link" href="{{ url_for('admin.products') }}">
+        <span class="module-kicker">Catálogo</span>
+        <span class="module-title">Produtos</span>
+        <span class="module-description">Mantenha o cadastro de itens pronto para leitura e requisição.</span>
+    </a>
+</section>
+{% endblock %}

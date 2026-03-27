@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+{% block title %}Nova requisição{% endblock %}
+{% block content %}
+<div class="collector-screen">
+    <header class="collector-topbar">
+        <h1>Nova requisicao</h1>
+    </header>
+
+    <div class="collector-content">
+        <section class="collector-camera">
+            <div class="card" style="margin: 0; border-radius: 18px; box-shadow: none; border-color: rgba(0,0,0,0.08); background: rgba(255,255,255,0.72);">
+                <div class="field" style="margin-bottom: 10px;">
+                    <label for="branch-select">Filial</label>
+                    <select id="branch-select" {% if not can_choose_branch %}disabled{% endif %}>
+                        {% for branch in branch_list %}
+                            <option value="{{ branch.id }}" {% if default_branch_id and default_branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="search-input">Buscar produto</label>
+                    <div style="display:grid; grid-template-columns: 1fr 120px; gap: 10px;">
+                        <input id="search-input" type="text" placeholder="Codigo ou descricao" autocomplete="off">
+                        <button id="search-btn" type="button">Buscar</button>
+                    </div>
+                </div>
+                <div id="search-results" style="margin-top: 10px; display:none;"></div>
+                {% if request.args.get('created') %}
+                    <div class="flash flash-success" style="margin: 10px 0 0 0;">
+                        Requisicao criada com sucesso{% if request.args.get('req_id') %}: #{{ request.args.get('req_id') }}{% endif %}.
+                    </div>
+                {% endif %}
+                <p id="request-status" class="muted" style="margin: 10px 0 0 0;">Aponte a camera para o codigo para adicionar itens.</p>
+            </div>
+
+            <div class="collector-camera-frame" style="margin-top: 12px;">
+                <video id="camera-preview" autoplay playsinline muted></video>
+                <div class="collector-camera-hint" aria-hidden="true"></div>
+            </div>
+            <div class="field" style="margin-top: 10px;">
+                <label for="manual-barcode">Codigo manual</label>
+                <div style="display:grid; grid-template-columns: 1fr 120px; gap: 10px;">
+                    <input id="manual-barcode" type="text" inputmode="numeric" autocomplete="off" placeholder="Digite o codigo">
+                    <button id="manual-add-btn" type="button">Adicionar</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="collector-listing">
+            <p class="collector-listing-title">Listagem da requisicao</p>
+            <div id="items-empty" class="empty-state" style="background: rgba(255,255,255,0.25); border-color: rgba(0,0,0,0.12); color: rgba(0,0,0,0.7);">
+                Nenhum item adicionado.
+            </div>
+            <div id="items-list" class="collector-rows" style="display:none;"></div>
+        </section>
+    </div>
+
+    <nav class="collector-bottom-bar" aria-label="Acoes da requisicao">
+        <a class="collector-bottom-btn button-link" href="{{ url_for('dashboard.home', hub=1) }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Voltar</span>
+        </a>
+        <button id="clear-items-btn" type="button" class="collector-bottom-btn">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M6 6l1 14h10l1-14" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Limpar</span>
+        </button>
+        <button id="submit-request-btn" type="button" class="collector-bottom-btn">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Enviar</span>
+        </button>
+        <a class="collector-bottom-btn button-link" href="{{ url_for('auth.logout') }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M10 16l-4-4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 12h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M13 4h7v16h-7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Sair</span>
+        </a>
+    </nav>
+</div>
+
+<div id="request-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
+    <div class="modal-card" role="document">
+        <div class="modal-head">
+            <p class="modal-title" id="request-modal-title">Editar item</p>
+            <p class="modal-subtitle" id="request-modal-subtitle"></p>
+        </div>
+        <div class="modal-body">
+            <div class="field">
+                <label for="request-modal-qty">Quantidade</label>
+                <input id="request-modal-qty" type="number" min="0.001" step="0.001" inputmode="decimal">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <div class="modal-actions-row">
+                <button type="button" id="request-modal-cancel" class="button-secondary">Cancelar</button>
+                <button type="button" id="request-modal-save" class="button">Salvar</button>
+            </div>
+            <button type="button" id="request-modal-remove" class="button-danger">Remover item</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+(() => {
+    const statusEl = document.getElementById("request-status");
+    const branchSelect = document.getElementById("branch-select");
+    const searchInput = document.getElementById("search-input");
+    const searchBtn = document.getElementById("search-btn");
+    const resultsEl = document.getElementById("search-results");
+    const emptyEl = document.getElementById("items-empty");
+    const listEl = document.getElementById("items-list");
+    const clearItemsBtn = document.getElementById("clear-items-btn");
+    const submitBtn = document.getElementById("submit-request-btn");
+    const manualBarcodeEl = document.getElementById("manual-barcode");
+    const manualAddBtn = document.getElementById("manual-add-btn");
+
+    const modalEl = document.getElementById("request-modal");
+    const modalSubtitleEl = document.getElementById("request-modal-subtitle");
+    const modalQtyEl = document.getElementById("request-modal-qty");
+    const modalCancelBtn = document.getElementById("request-modal-cancel");
+    const modalSaveBtn = document.getElementById("request-modal-save");
+    const modalRemoveBtn = document.getElementById("request-modal-remove");
+
+    const videoEl = document.getElementById("camera-preview");
+
+    let items = [];
+    let editingIndex = null;
+    let pendingScannedProduct = null;
+
+    let stream = null;
+    let detector = null;
+    let reading = false;
+    let lastCode = "";
+    let lastReadAt = 0;
+    let blockedCode = "";
+    let blockedUntil = 0;
+    const SAME_CODE_COOLDOWN_MS = 5000;
+
+    function formatQty(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return "1";
+        return String(n);
+    }
+
+    function showResults(results) {
+        if (!results || results.length === 0) {
+            resultsEl.style.display = "none";
+            resultsEl.innerHTML = "";
+            return;
+        }
+        resultsEl.style.display = "grid";
+        resultsEl.style.gap = "8px";
+        resultsEl.innerHTML = results.map((p, i) => `
+            <button type="button" class="button-secondary" data-idx="${i}" style="justify-content:flex-start; border-radius:14px;">
+                ${p.description} <span style="margin-left:auto; color: rgba(0,0,0,0.55); font-weight:800;">${p.barcode}</span>
+            </button>
+        `).join("");
+        resultsEl._results = results;
+    }
+
+    function renderItems() {
+        if (items.length === 0) {
+            emptyEl.style.display = "block";
+            listEl.style.display = "none";
+            listEl.innerHTML = "";
+            return;
+        }
+        emptyEl.style.display = "none";
+        listEl.style.display = "grid";
+        listEl.innerHTML = items.map((it, idx) => `
+            <div class="collector-row-simple" data-idx="${idx}">
+                <div class="collector-cell">${it.description}</div>
+                <div class="collector-cell">${it.barcode}</div>
+                <div class="collector-cell collector-cell-qty">${it.quantity}</div>
+                <button type="button" class="collector-edit-btn" aria-label="Editar item" data-action="edit">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+        `).join("");
+    }
+
+    function addProduct(product, qty = 1) {
+        const existing = items.find((it) => it.product_id === product.id);
+        if (existing) {
+            existing.quantity = formatQty(Number(existing.quantity) + Number(qty));
+        } else {
+            items.unshift({
+                product_id: product.id,
+                barcode: product.barcode,
+                description: product.description,
+                unit: product.unit,
+                quantity: formatQty(qty),
+            });
+        }
+        renderItems();
+    }
+
+    function openModal(index) {
+        const it = items[index];
+        if (!it) return;
+        editingIndex = index;
+        pendingScannedProduct = null;
+        modalRemoveBtn.style.display = "";
+        document.getElementById("request-modal-title").textContent = "Editar item";
+        modalSubtitleEl.textContent = `${it.description} • ${it.barcode}`;
+        modalQtyEl.value = it.quantity;
+        modalEl.classList.add("open");
+        stopCamera();
+        window.setTimeout(() => modalQtyEl.focus(), 0);
+    }
+
+    function openScanQtyModal(product, scannedCode) {
+        editingIndex = null;
+        pendingScannedProduct = {
+            product,
+            scannedCode,
+        };
+        modalRemoveBtn.style.display = "none";
+        document.getElementById("request-modal-title").textContent = "Quantidade do item";
+        modalSubtitleEl.textContent = `${product.description} • ${product.barcode}`;
+        modalQtyEl.value = "1";
+        modalEl.classList.add("open");
+        stopCamera();
+        window.setTimeout(() => modalQtyEl.focus(), 0);
+    }
+
+    function closeModal() {
+        modalEl.classList.remove("open");
+        editingIndex = null;
+        pendingScannedProduct = null;
+        startCamera();
+    }
+
+    async function lookupByBarcode(code, opts = {}) {
+        const fromScan = !!opts.fromScan;
+        const response = await fetch(`/api/products/by-barcode?barcode=${encodeURIComponent(code)}`, {
+            credentials: "same-origin",
+        });
+        const data = await response.json();
+        if (!data.found) {
+            statusEl.textContent = data.message || "Produto nao encontrado.";
+            return;
+        }
+        if (fromScan) {
+            // Na leitura por camera, a quantidade sempre e confirmada manualmente.
+            openScanQtyModal(data.product, code);
+            statusEl.textContent = `Leitura detectada: ${data.product.description}. Informe a quantidade.`;
+            return;
+        }
+        addProduct(data.product, 1);
+        statusEl.textContent = `Adicionado: ${data.product.description}`;
+    }
+
+    async function runSearch() {
+        const q = (searchInput.value || "").trim();
+        if (!q) {
+            showResults([]);
+            return;
+        }
+        const response = await fetch(`/api/products/search?q=${encodeURIComponent(q)}&limit=12`, {
+            credentials: "same-origin",
+        });
+        const data = await response.json();
+        showResults(data.results || []);
+    }
+
+    async function submitRequest() {
+        const branchId = Number(branchSelect.value || "0");
+        if (!branchId) {
+            statusEl.textContent = "Selecione uma filial.";
+            return;
+        }
+        if (items.length === 0) {
+            statusEl.textContent = "Adicione pelo menos um item.";
+            return;
+        }
+
+        const payload = {
+            branch_id: branchId,
+            notes: "",
+            items: items.map((it) => ({
+                product_id: it.product_id,
+                quantity: String(it.quantity),
+                scanned_code: it.barcode,
+                notes: "",
+            })),
+        };
+
+        submitBtn.disabled = true;
+        try {
+            const response = await fetch("{{ url_for('requests.create') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                const reqId = (data && data.data && data.data.id) ? String(data.data.id) : "";
+                const baseUrl = "{{ url_for('requests.new') }}";
+                const nextUrl = reqId ? `${baseUrl}?created=1&req_id=${encodeURIComponent(reqId)}` : `${baseUrl}?created=1`;
+                window.location.href = nextUrl;
+                return;
+            }
+            statusEl.textContent = data.message || "Erro ao criar requisicao.";
+        } catch (_e) {
+            statusEl.textContent = "Erro de comunicacao com o servidor.";
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
+    async function scanLoop() {
+        if (!reading || !detector) return;
+        try {
+            const barcodes = await detector.detect(videoEl);
+            if (barcodes && barcodes.length > 0) {
+                const code = (barcodes[0].rawValue || "").trim();
+                const now = Date.now();
+                if (!code) {
+                    window.setTimeout(scanLoop, 300);
+                    return;
+                }
+                if (code === blockedCode && now < blockedUntil) {
+                    window.setTimeout(scanLoop, 300);
+                    return;
+                }
+                if (code && (code !== lastCode || now - lastReadAt > 2000)) {
+                    lastCode = code;
+                    lastReadAt = now;
+                    await lookupByBarcode(code, { fromScan: true });
+                    blockedCode = code;
+                    blockedUntil = now + SAME_CODE_COOLDOWN_MS;
+                }
+            }
+        } catch (_e) {
+        } finally {
+            window.setTimeout(scanLoop, 300);
+        }
+    }
+
+    async function startCamera() {
+        if (!window.isSecureContext) {
+            statusEl.textContent = "Camera bloqueada: abra em HTTPS ou localhost. Use o codigo manual abaixo.";
+            return;
+        }
+        if (!("mediaDevices" in navigator) || !navigator.mediaDevices.getUserMedia) {
+            statusEl.textContent = "Navegador sem suporte a camera. Use o codigo manual abaixo.";
+            return;
+        }
+        if (!("BarcodeDetector" in window)) {
+            statusEl.textContent = "Leitura automatica nao suportada. Use busca ou codigo manual.";
+            return;
+        }
+        try {
+            detector = new window.BarcodeDetector({
+                formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"]
+            });
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: "environment" } },
+                audio: false
+            });
+            videoEl.srcObject = stream;
+            reading = true;
+            scanLoop();
+        } catch (_e) {
+            statusEl.textContent = "Nao foi possivel iniciar a camera. Use o codigo manual.";
+        }
+    }
+
+    function stopCamera() {
+        reading = false;
+        if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+            stream = null;
+        }
+        videoEl.srcObject = null;
+    }
+
+    searchBtn.addEventListener("click", runSearch);
+    searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            runSearch();
+        }
+    });
+
+    resultsEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-idx]");
+        if (!btn) return;
+        const idx = Number(btn.dataset.idx);
+        const result = (resultsEl._results || [])[idx];
+        if (result) {
+            addProduct(result, 1);
+            showResults([]);
+            searchInput.value = "";
+        }
+    });
+
+    listEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-action='edit']");
+        if (!btn) return;
+        const row = e.target.closest("[data-idx]");
+        if (!row) return;
+        openModal(Number(row.dataset.idx));
+    });
+
+    modalCancelBtn.addEventListener("click", closeModal);
+    modalSaveBtn.addEventListener("click", () => {
+        const v = (modalQtyEl.value || "").trim();
+        if (editingIndex !== null) {
+            items[editingIndex].quantity = formatQty(v);
+            renderItems();
+            closeModal();
+            return;
+        }
+        if (pendingScannedProduct) {
+            addProduct(pendingScannedProduct.product, v || "1");
+            statusEl.textContent = `Adicionado: ${pendingScannedProduct.product.description}`;
+            closeModal();
+        }
+    });
+    modalRemoveBtn.addEventListener("click", () => {
+        if (editingIndex === null) return;
+        items.splice(editingIndex, 1);
+        renderItems();
+        closeModal();
+    });
+
+    document.addEventListener("click", (e) => {
+        if (e.target === modalEl) closeModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (!modalEl.classList.contains("open")) return;
+        if (e.key === "Escape") closeModal();
+        if (e.key === "Enter" && e.target === modalQtyEl) {
+            e.preventDefault();
+            modalSaveBtn.click();
+        }
+    });
+
+    clearItemsBtn.addEventListener("click", () => {
+        items = [];
+        renderItems();
+        statusEl.textContent = "Lista limpa.";
+    });
+    submitBtn.addEventListener("click", submitRequest);
+
+    manualAddBtn.addEventListener("click", async () => {
+        const code = (manualBarcodeEl.value || "").trim();
+        if (!code) {
+            statusEl.textContent = "Informe o codigo.";
+            return;
+        }
+        await lookupByBarcode(code);
+        manualBarcodeEl.value = "";
+    });
+    manualBarcodeEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            manualAddBtn.click();
+        }
+    });
+
+    window.addEventListener("beforeunload", stopCamera);
+    renderItems();
+    startCamera();
+})();
+</script>
+{% endblock %}

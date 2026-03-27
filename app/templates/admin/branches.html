@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Filiais{% endblock %}
+{% block content %}
+<section class="card">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Estrutura</span>
+            <h1>Filiais</h1>
+        </div>
+    </div>
+    <form method="post" class="form-grid">
+        {{ form.hidden_tag() }}
+        <div class="field">
+            {{ form.name.label }}
+            {{ form.name() }}
+        </div>
+        <div class="field">
+            {{ form.code.label }}
+            {{ form.code() }}
+        </div>
+        <label class="checkbox-row">
+            {{ form.active() }}
+            <span>{{ form.active.label.text }}</span>
+        </label>
+        <div class="form-actions field-span-2">
+            <button type="submit">{{ form.submit.label.text }}</button>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Cadastro atual</span>
+            <h2>Lista de filiais</h2>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Código</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for branch in branch_list %}
+                <tr>
+                    <td>{{ branch.name }}</td>
+                    <td>{{ branch.code }}</td>
+                    <td><span class="badge badge-neutral">{{ "Ativa" if branch.active else "Inativa" }}</span></td>
+                </tr>
+            {% else %}
+                <tr><td colspan="3">Nenhuma filial cadastrada.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

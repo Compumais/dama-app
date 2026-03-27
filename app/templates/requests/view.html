@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Requisição #{{ stock_request.id }}{% endblock %}
+{% block content %}
+{% set ro = read_only|default(false) %}
+<div class="collector-screen requests-screen">
+    <header class="collector-topbar">
+        <h1>Req #{{ stock_request.id }}</h1>
+    </header>
+
+    <div class="collector-content">
+        <section class="collector-camera">
+            <div class="card" style="margin: 0; border-radius: 18px; box-shadow: none; border-color: rgba(0,0,0,0.08); background: rgba(255,255,255,0.72);">
+                <p class="collector-listing-title" style="margin: 0 0 10px 0;">Produtos</p>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="button-secondary" style="min-height: 44px; border-radius: 14px; display:grid; place-items:center;">
+                        {{ stock_request.branch.name if stock_request.branch else "-" }}
+                    </div>
+                    <div class="button-secondary" style="min-height: 44px; border-radius: 14px; display:grid; place-items:center;">
+                        {{ stock_request.status.value }}
+                    </div>
+                </div>
+                <p class="muted" style="margin: 10px 0 0 0;">{% if ro %}Lista de itens solicitados (somente leitura).{% else %}Lista de itens solicitados. Use "Pronto" quando finalizar a separação.{% endif %}</p>
+            </div>
+        </section>
+
+        <section class="collector-listing">
+            <p class="collector-listing-title">Itens</p>
+            {% if stock_request.items %}
+                <div class="collector-rows">
+                    {% for it in stock_request.items %}
+                        <div class="collector-row-simple" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) auto 44px;">
+                            <div class="collector-cell">{{ it.product.description if it.product else it.scanned_code }}</div>
+                            <div class="collector-cell">{{ it.scanned_code }}</div>
+                            <div class="collector-cell collector-cell-qty">{{ it.quantity }}</div>
+                            <div class="collector-cell" style="text-align:center;">-</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state" style="background: rgba(255,255,255,0.25); border-color: rgba(0,0,0,0.12); color: rgba(0,0,0,0.7);">
+                    Nenhum item.
+                </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <nav class="collector-bottom-bar" aria-label="Acoes da requisicao">
+        <a class="collector-bottom-btn button-link btn-home" href="{% if ro %}{{ url_for('requests.mine', status=stock_request.status.value) }}{% else %}{{ url_for('requests.index', status=stock_request.status.value) }}{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Voltar</span>
+        </a>
+        {% if not ro %}
+        <a class="collector-bottom-btn button-link btn-collector" href="{{ url_for('collector.index') }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 4h16v16H4V4Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M7 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M7 12h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M7 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Coletor</span>
+        </a>
+        {% else %}
+        <span class="collector-bottom-btn" style="opacity:0.35; pointer-events:none;"></span>
+        {% endif %}
+        {% if not ro %}
+        <form method="post" action="{{ url_for('requests.mark_ready', request_id=stock_request.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="collector-bottom-btn btn-queue" {% if stock_request.status.value != 'pendente' %}disabled style="opacity:0.6;"{% endif %}>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Pronto</span>
+            </button>
+        </form>
+        {% else %}
+        <span class="collector-bottom-btn" style="opacity:0.35; pointer-events:none;"></span>
+        {% endif %}
+        <a class="collector-bottom-btn button-link btn-logout" href="{{ url_for('auth.logout') }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M10 16l-4-4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 12h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M13 4h7v16h-7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Sair</span>
+        </a>
+    </nav>
+</div>
+{% endblock %}

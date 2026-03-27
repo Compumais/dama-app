@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<section class="login-shell">
+    <div class="card login-card">
+        <span class="eyebrow">Acesso seguro</span>
+        <h1>Acesse a operação</h1>
+        <p class="section-copy">
+            Entre para continuar no painel de coleta, requisições e administração.
+        </p>
+        <form method="post" class="form-grid">
+            {{ form.hidden_tag() }}
+            {% if next_url %}
+                <input type="hidden" name="next" value="{{ next_url }}">
+            {% endif %}
+            <div class="field field-span-2">
+                {{ form.email.label }}
+                {{ form.email(placeholder="seu-email@empresa.com") }}
+            </div>
+            <div class="field field-span-2">
+                {{ form.password.label }}
+                {{ form.password(placeholder="Sua senha") }}
+            </div>
+            <label class="checkbox-row field-span-2">
+                {{ form.remember_me() }}
+                <span>{{ form.remember_me.label.text }}</span>
+            </label>
+            <div class="form-actions field-span-2">
+                <button type="submit">{{ form.submit.label.text }}</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+{% block content %}
+<section class="card">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Catálogo</span>
+            <h1>Produtos</h1>
+        </div>
+    </div>
+    <form method="post" class="form-grid">
+        {{ form.hidden_tag() }}
+        <div class="field">
+            {{ form.barcode.label }}
+            {{ form.barcode() }}
+        </div>
+        <div class="field">
+            {{ form.internal_code.label }}
+            {{ form.internal_code() }}
+        </div>
+        <div class="field field-span-2">
+            {{ form.description.label }}
+            {{ form.description() }}
+        </div>
+        <div class="field">
+            {{ form.unit.label }}
+            {{ form.unit() }}
+        </div>
+        <label class="checkbox-row">
+            {{ form.active() }}
+            <span>{{ form.active.label.text }}</span>
+        </label>
+        <div class="form-actions field-span-2">
+            <button type="submit">{{ form.submit.label.text }}</button>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Catálogo atual</span>
+            <h2>Lista de produtos</h2>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Descrição</th>
+                    <th>Cód. barras</th>
+                    <th>Unidade</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for product in product_list %}
+                <tr>
+                    <td>{{ product.description }}</td>
+                    <td>{{ product.barcode }}</td>
+                    <td>{{ product.unit }}</td>
+                    <td><span class="badge badge-neutral">{{ "Ativo" if product.active else "Inativo" }}</span></td>
+                </tr>
+            {% else %}
+                <tr><td colspan="4">Nenhum produto cadastrado.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

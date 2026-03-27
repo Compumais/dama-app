@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Nova requisição{% endblock %}
+{% block content %}
+<section class="hero-card">
+    <div class="hero-layout">
+        <div>
+            <span class="eyebrow">Novo pedido</span>
+            <h1 class="hero-title">Crie uma requisição sem ruído.</h1>
+            <p class="hero-copy">
+                O formulário foi reorganizado para ficar mais escaneável no celular, com a ação principal sempre evidente.
+            </p>
+        </div>
+        <div class="metric-strip">
+            <div class="metric-pill">
+                <span class="metric-title">Fluxo</span>
+                <span class="metric-value">1 item por envio</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Formulário</span>
+            <h2>Dados da requisição</h2>
+        </div>
+    </div>
+    <form method="post" class="form-grid">
+        {{ form.hidden_tag() }}
+        <div class="field">
+            {{ form.branch_id.label }}
+            {{ form.branch_id() }}
+        </div>
+        <div class="field">
+            {{ form.product_id.label }}
+            {{ form.product_id() }}
+        </div>
+        <div class="field">
+            {{ form.quantity.label }}
+            {{ form.quantity(step="0.001", min="0.001") }}
+        </div>
+        <div class="field">
+            {{ form.item_notes.label }}
+            {{ form.item_notes() }}
+        </div>
+        <div class="field field-span-2">
+            {{ form.notes.label }}
+            {{ form.notes(rows="4") }}
+        </div>
+        <div class="form-actions field-span-2">
+            <button type="submit">{{ form.submit.label.text }}</button>
+            <a class="button-secondary button-link" href="{{ url_for('requests.index') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

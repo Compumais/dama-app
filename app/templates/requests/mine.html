@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Minhas requisições{% endblock %}
+{% block content %}
+<div class="collector-screen requests-screen">
+    <header class="collector-topbar">
+        <h1>{% if role_slug == 'gestor_consulta' %}Consulta{% else %}Minhas requisicoes{% endif %}</h1>
+    </header>
+
+    <div class="collector-content">
+        <section class="collector-camera">
+            <div class="card" style="margin: 0; border-radius: 18px; box-shadow: none; border-color: rgba(0,0,0,0.08); background: rgba(255,255,255,0.72);">
+                <p class="collector-listing-title" style="margin: 0 0 10px 0;">Filtro</p>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <a class="button-secondary button-link request-filter-btn request-filter-pendente {% if selected_status == 'pendente' %}active{% endif %}" href="{{ url_for('requests.mine', status='pendente') }}" style="justify-content:center; border-radius: 14px; min-height: 44px;">
+                        Pendentes
+                    </a>
+                    <a class="button-secondary button-link request-filter-btn request-filter-pronto {% if selected_status == 'pronto' %}active{% endif %}" href="{{ url_for('requests.mine', status='pronto') }}" style="justify-content:center; border-radius: 14px; min-height: 44px;">
+                        Prontas
+                    </a>
+                </div>
+                <p class="muted" style="margin: 10px 0 0 0;">Apenas consulta. Para separar pedidos, use a fila do açougue.</p>
+            </div>
+        </section>
+
+        <section class="collector-listing">
+            <p class="collector-listing-title">Lista</p>
+            {% if request_list %}
+                <div class="collector-rows">
+                    {% for req in request_list %}
+                        <div class="request-row-simple">
+                            <div class="request-row-main">
+                                <div class="request-row-line">
+                                    <span class="request-row-strong">#{{ req.id }}</span>
+                                    <span>•</span>
+                                    <span class="request-row-strong">{{ req.branch.name if req.branch else "-" }}</span>
+                                    <span class="request-row-sep">•</span>
+                                    <span class="request-row-soft">{{ req.requested_by.full_name if req.requested_by else "-" }}</span>
+                                    <span class="request-row-sep">•</span>
+                                    <span class="request-row-soft">{{ req.created_at.strftime('%d/%m %H:%M') if req.created_at else "-" }}</span>
+                                </div>
+                            </div>
+                            <div class="request-row-status">
+                                <span class="request-status-pill request-status-{{ req.status.value }}">{{ req.status.value }}</span>
+                            </div>
+                            <a class="button-link request-view-btn" href="{{ url_for('requests.mine_view', request_id=req.id) }}" aria-label="Ver produtos">
+                                Ver produtos
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state" style="background: rgba(255,255,255,0.25); border-color: rgba(0,0,0,0.12); color: rgba(0,0,0,0.7);">
+                    Nenhuma requisicao nesta lista.
+                </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <nav class="collector-bottom-bar" aria-label="Acoes">
+        <a class="collector-bottom-btn button-link btn-home" href="{{ url_for('dashboard.home', hub=1) }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 13h7V4H4v9Zm9 7h7V11h-7v9ZM4 20h7v-5H4v5Zm9-11h7V4h-7v5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Painel</span>
+        </a>
+        {% if role_slug == 'solicitante_filial' %}
+        <a class="collector-bottom-btn button-link btn-collector" href="{{ url_for('requests.new') }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Nova</span>
+        </a>
+        {% elif role_slug == 'administrador' %}
+        <a class="collector-bottom-btn button-link btn-collector" href="{{ url_for('collector.index') }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 4h16v16H4V4Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Coletor</span>
+        </a>
+        {% else %}
+        <span class="collector-bottom-btn" style="opacity:0.35; pointer-events:none;"></span>
+        {% endif %}
+        <a class="collector-bottom-btn button-link btn-queue" href="{{ url_for('requests.mine', status=selected_status) }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 12a9 9 0 1 1-3-6.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Lista</span>
+        </a>
+        <a class="collector-bottom-btn button-link btn-logout" href="{{ url_for('auth.logout') }}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M10 16l-4-4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 12h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M13 4h7v16h-7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Sair</span>
+        </a>
+    </nav>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+(() => {
+    const socket = io();
+    let t = null;
+    socket.on("requests_updated", () => {
+        if (t) window.clearTimeout(t);
+        t = window.setTimeout(() => window.location.reload(), 400);
+    });
+})();
+</script>
+{% endblock %}

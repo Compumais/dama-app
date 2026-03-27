@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Escolher módulo{% endblock %}
+{% block content %}
+<div style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 60; display: grid; place-items: center; padding: 16px;">
+    <section class="card" style="width: min(460px, 100%); margin: 0;">
+        <span class="eyebrow">Acesso</span>
+        <h1 style="margin-top: 6px;">Escolha o módulo</h1>
+        <p class="section-copy">Seu perfil possui acesso a mais de uma área. Selecione para onde deseja ir agora.</p>
+        <div class="form-grid" style="margin-top: 12px;">
+            {% for option in options %}
+            <a
+                class="button button-link field-span-2"
+                href="{{ url_for(option.endpoint, **(option.kwargs if option.kwargs is defined else {})) }}"
+                style="justify-content:center; min-height: 48px;"
+            >
+                {{ option.label }}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

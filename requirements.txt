@@ -1,0 +1,11 @@
+Flask
+Flask-Login
+Flask-Migrate
+Flask-SocketIO
+Flask-SQLAlchemy
+Flask-WTF
+alembic
+email-validator
+psycopg2-binary
+python-dotenv
+requests

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+{% set slug = (user.role.slug if user.role else '')|lower %}
+<section class="hero-card">
+    <div class="hero-layout">
+        <div>
+            <span class="eyebrow">Operação central</span>
+            <h1 class="hero-title">Tudo o que a equipe precisa, com menos fricção.</h1>
+            <p class="hero-copy">
+                {{ user.full_name }}, escolha o fluxo do seu perfil abaixo.
+            </p>
+            <div class="hero-actions">
+                {% if slug == 'acougueiro' %}
+                <a class="button" href="{{ url_for('collector.index') }}">Abrir coletor</a>
+                <a class="button-secondary button-link" href="{{ url_for('requests.index', status='pendente') }}">Fila do açougue</a>
+                {% elif slug == 'solicitante_filial' %}
+                <a class="button" href="{{ url_for('requests.new') }}">Nova requisição</a>
+                <a class="button-secondary button-link" href="{{ url_for('requests.mine', status='pendente') }}">Minhas requisições</a>
+                {% elif slug == 'gestor_consulta' %}
+                <a class="button" href="{{ url_for('requests.mine', status='pendente') }}">Consultar requisições</a>
+                <a class="button-secondary button-link" href="{{ url_for('dashboard.home', hub=1) }}">Este painel</a>
+                {% elif slug == 'administrador' %}
+                <a class="button" href="{{ url_for('collector.index') }}">Abrir coletor</a>
+                <a class="button-secondary button-link" href="{{ url_for('requests.mine', status='pendente') }}">Requisições</a>
+                {% else %}
+                <a class="button" href="{{ url_for('auth.login') }}">Entrar</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">Perfil ativo</span>
+                <span class="stat-value">{{ user.role.name if user.role else "Sem perfil" }}</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Fluxo recomendado</span>
+                <span class="stat-value">{% if slug == 'acougueiro' %}Coleta{% elif slug == 'solicitante_filial' %}Pedidos{% else %}Consulta{% endif %}</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Prioridade</span>
+                <span class="stat-value">Leitura rápida</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <div class="stack-header">
+        <div>
+            <span class="eyebrow">Módulos</span>
+            <h2>Escolha um fluxo</h2>
+            <p class="section-copy">Atalhos conforme seu perfil.</p>
+        </div>
+    </div>
+    <div class="module-grid">
+        {% if slug == 'acougueiro' %}
+        <a class="module-link" href="{{ url_for('collector.index') }}">
+            <span class="module-kicker">Mais usado</span>
+            <span class="module-title">Coletor</span>
+            <span class="module-description">Leitura de códigos e ajuste de quantidades.</span>
+        </a>
+        <a class="module-link" href="{{ url_for('requests.index', status='pendente') }}">
+            <span class="module-kicker">Operação</span>
+            <span class="module-title">Fila do açougue</span>
+            <span class="module-description">Requisições pendentes e prontas.</span>
+        </a>
+        {% elif slug == 'solicitante_filial' %}
+        <a class="module-link" href="{{ url_for('requests.new') }}">
+            <span class="module-kicker">Novo</span>
+            <span class="module-title">Nova requisição</span>
+            <span class="module-description">Monte o pedido com busca ou câmera.</span>
+        </a>
+        <a class="module-link" href="{{ url_for('requests.mine', status='pendente') }}">
+            <span class="module-kicker">Acompanhamento</span>
+            <span class="module-title">Minhas requisições</span>
+            <span class="module-description">Veja status dos seus pedidos.</span>
+        </a>
+        {% elif slug == 'gestor_consulta' %}
+        <a class="module-link" href="{{ url_for('requests.mine', status='pendente') }}">
+            <span class="module-kicker">Consulta</span>
+            <span class="module-title">Requisições</span>
+            <span class="module-description">Visão geral somente leitura.</span>
+        </a>
+        {% elif slug == 'administrador' %}
+        <a class="module-link" href="{{ url_for('collector.index') }}">
+            <span class="module-kicker">Operação</span>
+            <span class="module-title">Coletor</span>
+            <span class="module-description">Testes e coleta.</span>
+        </a>
+        <a class="module-link" href="{{ url_for('requests.mine', status='pendente') }}">
+            <span class="module-kicker">Pedidos</span>
+            <span class="module-title">Requisições</span>
+            <span class="module-description">Consulta de todas as requisições.</span>
+        </a>
+        <a class="module-link" href="{{ url_for('admin.index') }}">
+            <span class="module-kicker">Cadastro</span>
+            <span class="module-title">Administração</span>
+            <span class="module-description">Usuários, filiais e produtos.</span>
+        </a>
+        {% else %}
+        <a class="module-link" href="{{ url_for('auth.login') }}">
+            <span class="module-kicker">Acesso</span>
+            <span class="module-title">Login</span>
+            <span class="module-description">Entre com sua conta.</span>
+        </a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
