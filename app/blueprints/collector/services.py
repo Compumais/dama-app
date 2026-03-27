@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
-from app.models import Collection, CollectionItem, Product
+from app.models import Collection, CollectionItem, Product, User
 from app.models.collection import CollectionStatus
 from app.services.barcode_service import parse_barcode
 
@@ -243,11 +243,38 @@ def finalize_open_collection(user_id: int):
     return True, f"Coleta finalizada com sucesso. CSV gerado em: {export_path}"
 
 
+def _sanitize_filename_part(name: str) -> str:
+    """Remove caracteres invalidos em nomes de arquivo (Windows/Unix)."""
+    if not name or not str(name).strip():
+        return ""
+    cleaned = "".join(c if c not in '<>:"/\\|?*\n\r\t' else "_" for c in str(name).strip())
+    cleaned = " ".join(cleaned.split())
+    return cleaned[:80]
+
+
+def _owner_label_for_export(collection: Collection) -> str:
+    """Nome (ou identificador) do usuario da coleta para compor o nome do CSV."""
+    owner = db.session.get(User, collection.user_id)
+    if not owner:
+        return f"user{collection.user_id}"
+    if (owner.full_name or "").strip():
+        part = _sanitize_filename_part(owner.full_name.strip())
+        if part:
+            return part
+    email_local = (owner.email or "").split("@")[0].strip()
+    if email_local:
+        part = _sanitize_filename_part(email_local)
+        if part:
+            return part
+    return f"user{collection.user_id}"
+
+
 def _export_collection_csv(collection: Collection) -> str:
     FINALIZED_DIR.mkdir(parents=True, exist_ok=True)
 
     collection_date = datetime.now().strftime("%d-%m-%Y")
-    base_name = f"coleta {collection_date}"
+    owner_label = _owner_label_for_export(collection)
+    base_name = f"coleta {collection_date} {owner_label}"
     target_path = FINALIZED_DIR / f"{base_name}.csv"
 
     suffix = 1

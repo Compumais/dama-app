@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Coletor{% endblock %}
 {% block content %}
+{% set nav_slug = (current_user.role.slug if current_user.is_authenticated and current_user.role else '')|lower %}
+{% if nav_slug == 'acougueiro' %}
+    {% set requests_nav_url = url_for('requests.index', status='pendente') %}
+{% elif nav_slug in ['solicitante_filial', 'gestor_consulta', 'administrador'] %}
+    {% set requests_nav_url = url_for('requests.mine', status='pendente') %}
+{% else %}
+    {% set requests_nav_url = url_for('dashboard.home') %}
+{% endif %}
 {% set total_items = collection.items|length if collection and collection.items else 0 %}
 {% set total_quantity = collection.items|sum(attribute='quantity') if collection and collection.items else 0 %}
 
@@ -51,7 +59,7 @@
     </div>
 
     <nav class="collector-bottom-bar" aria-label="Acoes do coletor">
-        <a class="collector-bottom-btn button-link" href="{{ url_for('requests.home') }}">
+        <a class="collector-bottom-btn button-link" href="{{ requests_nav_url }}">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M4 13h7V4H4v9Zm9 7h7V11h-7v9ZM4 20h7v-5H4v5Zm9-11h7V4h-7v5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
             </svg>
