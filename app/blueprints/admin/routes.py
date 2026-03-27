@@ -1,9 +1,14 @@
-from flask import flash, redirect, render_template, url_for
+from flask import flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
 from app.blueprints.admin import admin_bp
-from app.blueprints.admin.forms import BranchForm, ProductForm, UserForm
-from app.blueprints.admin.services import email_already_exists, list_admin_overview
+
+from app.blueprints.admin.forms import BranchForm, ProductForm, UserEditForm, UserForm
+from app.blueprints.admin.services import (
+    email_already_exists,
+    email_already_exists_for_other,
+    list_admin_overview,
+)
 from app.extensions import db
 from app.models import Branch, Product, Role, User
 from app.utils.permissions import role_required
@@ -110,9 +115,19 @@ def users():
         else:
             flash("Nao foi possivel salvar o usuario. Verifique os dados informados.", "danger")
 
-    user_list = User.query.order_by(User.full_name.asc()).all()
-    return render_template("admin/users.html", form=form, user_list=user_list)
+    edit_form = UserEditForm()
+    edit_form.role_id.choices = [(role.id, role.name) for role in roles]
+    edit_form.branch_id.choices = [(0, "Sem filial")] + [
+        (branch.id, branch.name) for branch in branches
+    ]
 
+    user_list = User.query.order_by(User.full_name.asc()).all()
+    return render_template(
+        "admin/users.html",
+        form=form,
+        edit_form=edit_form,
+        user_list=user_list,
+    )
 
 
 @admin_bp.route("/users/edit/<int:user_id>", methods=["GET", "POST"])
@@ -120,20 +135,47 @@ def users():
 @role_required("administrador")
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
-    form = UserForm(obj=user)
-    return render_template("admin/users_edit.html", form=form, user=user)
+    roles = Role.query.filter_by(active=True).order_by(Role.name.asc()).all()
+    branches = Branch.query.filter_by(active=True).order_by(Branch.name.asc()).all()
+
+    form = UserEditForm()
+    form.role_id.choices = [(role.id, role.name) for role in roles]
+    form.branch_id.choices = [(0, "Sem filial")] + [
+        (branch.id, branch.name) for branch in branches
+    ]
+
+    if request.method == "GET":
+        return redirect(url_for("admin.users"))
 
     if form.validate_on_submit():
+        email = form.email.data.strip().lower()
+        if email_already_exists_for_other(email, user.id):
+            flash("Ja existe usuario com este e-mail.", "warning")
+            return redirect(url_for("admin.users"))
+
         user.full_name = form.full_name.data.strip()
-        user.email = form.email.data.strip().lower()
+        user.email = email
         user.role_id = form.role_id.data
         user.branch_id = form.branch_id.data or None
         user.active = form.active.data
+        new_password = (form.password.data or "").strip()
+        if new_password:
+            user.set_password(new_password)
         db.session.commit()
         flash("Usuario atualizado com sucesso.", "success")
         return redirect(url_for("admin.users"))
 
-    return render_template("admin/users_edit.html", form=form, user=user)
+    if form.is_submitted():
+        field_messages = []
+        for field_name, messages in form.errors.items():
+            for message in messages:
+                field_messages.append(f"{field_name}: {message}")
+        if field_messages:
+            flash("Nao foi possivel atualizar o usuario. " + " | ".join(field_messages), "danger")
+        else:
+            flash("Nao foi possivel atualizar o usuario. Verifique os dados informados.", "danger")
+
+    return redirect(url_for("admin.users"))
 
 @admin_bp.route("/users/delete/<int:user_id>", methods=["GET", "POST"])
 @login_required

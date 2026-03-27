@@ -34,3 +34,23 @@ class UserForm(FlaskForm):
     branch_id = SelectField("Filial", coerce=int, validators=[Optional()], default=0)
     active = BooleanField("Ativo", default=True)
     submit = SubmitField("Salvar")
+
+
+class UserEditForm(FlaskForm):
+    full_name = StringField("Nome completo", validators=[DataRequired(), Length(max=120)])
+    email = StringField(
+        "E-mail",
+        validators=[
+            DataRequired(),
+            Length(max=255),
+            Regexp(r"^[^@\s]+@[^@\s]+$", message="Informe um e-mail válido."),
+        ],
+    )
+    password = PasswordField(
+        "Nova senha (deixe em branco para manter)",
+        validators=[Optional(), Length(min=6, max=255)],
+    )
+    role_id = SelectField("Perfil", coerce=int, validators=[DataRequired()])
+    branch_id = SelectField("Filial", coerce=int, validators=[Optional()], default=0)
+    active = BooleanField("Ativo", default=True)
+    submit = SubmitField("Salvar alterações")

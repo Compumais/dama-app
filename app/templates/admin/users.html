@@ -68,15 +68,114 @@
                     <td>{{ user.branch.name if user.branch else "-" }}</td>
                     <td><span class="badge badge-neutral">{{ "Ativo" if user.active else "Inativo" }}</span></td>
                     <td>
-                        <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="button-secondary button-link">Editar</a>
+                        <button
+                            type="button"
+                            class="button-secondary button-link user-edit-open"
+                            data-edit-url="{{ url_for('admin.edit_user', user_id=user.id) }}"
+                            data-full-name="{{ user.full_name|e }}"
+                            data-email="{{ user.email|e }}"
+                            data-role-id="{{ user.role_id }}"
+                            data-branch-id="{{ user.branch_id or 0 }}"
+                            data-active="{{ 1 if user.active else 0 }}"
+                        >Editar</button>
                         <a href="{{ url_for('admin.delete_user', user_id=user.id) }}" class="button-secondary button-link">Deletar</a>
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="5">Nenhum usuário cadastrado.</td></tr>
+                <tr><td colspan="6">Nenhum usuário cadastrado.</td></tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
 </section>
+
+<div id="user-edit-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="user-edit-modal-title">
+    <div class="modal-card" role="document">
+        <div class="modal-head">
+            <p class="modal-title" id="user-edit-modal-title">Editar usuário</p>
+            <p class="modal-subtitle">Altere os dados e salve. A senha só é trocada se você preencher o campo.</p>
+        </div>
+        <form id="user-edit-modal-form" method="post" action="" class="modal-body form-grid">
+            {{ edit_form.hidden_tag() }}
+            <div class="field">
+                {{ edit_form.full_name.label }}
+                {{ edit_form.full_name(id="user-edit-full-name") }}
+            </div>
+            <div class="field">
+                {{ edit_form.email.label }}
+                {{ edit_form.email(id="user-edit-email") }}
+            </div>
+            <div class="field">
+                {{ edit_form.password.label }}
+                {{ edit_form.password(id="user-edit-password", placeholder="") }}
+            </div>
+            <div class="field">
+                {{ edit_form.role_id.label }}
+                {{ edit_form.role_id(id="user-edit-role-id") }}
+            </div>
+            <div class="field">
+                {{ edit_form.branch_id.label }}
+                {{ edit_form.branch_id(id="user-edit-branch-id") }}
+            </div>
+            <label class="checkbox-row">
+                {{ edit_form.active(id="user-edit-active") }}
+                <span>{{ edit_form.active.label.text }}</span>
+            </label>
+            <div class="modal-actions field-span-2">
+                <div class="modal-actions-row">
+                    <button type="button" id="user-edit-cancel" class="button-secondary">Cancelar</button>
+                    <button type="submit" class="button">{{ edit_form.submit.label.text }}</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+(() => {
+    const modal = document.getElementById("user-edit-modal");
+    const form = document.getElementById("user-edit-modal-form");
+    if (!modal || !form) return;
+
+    const fullNameEl = document.getElementById("user-edit-full-name");
+    const emailEl = document.getElementById("user-edit-email");
+    const passwordEl = document.getElementById("user-edit-password");
+    const roleEl = document.getElementById("user-edit-role-id");
+    const branchEl = document.getElementById("user-edit-branch-id");
+    const activeEl = document.getElementById("user-edit-active");
+    const cancelBtn = document.getElementById("user-edit-cancel");
+
+    function openModal(btn) {
+        form.action = btn.dataset.editUrl || "";
+        if (fullNameEl) fullNameEl.value = btn.dataset.fullName || "";
+        if (emailEl) emailEl.value = btn.dataset.email || "";
+        if (passwordEl) passwordEl.value = "";
+        if (roleEl) roleEl.value = String(btn.dataset.roleId || "");
+        if (branchEl) branchEl.value = String(btn.dataset.branchId || "0");
+        if (activeEl) activeEl.checked = btn.dataset.active === "1";
+        modal.classList.add("open");
+    }
+
+    function closeModal() {
+        modal.classList.remove("open");
+        if (passwordEl) passwordEl.value = "";
+    }
+
+    document.querySelectorAll(".user-edit-open").forEach((btn) => {
+        btn.addEventListener("click", () => openModal(btn));
+    });
+
+    cancelBtn.addEventListener("click", closeModal);
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+    });
+})();
+</script>
 {% endblock %}
