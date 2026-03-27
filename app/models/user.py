@@ -37,18 +37,21 @@ class User(UserMixin, db.Model):
         back_populates="requested_by",
         foreign_keys="StockRequest.requested_by_user_id",
         lazy="dynamic",
+        passive_deletes=True,
     )
     status_changes = db.relationship(
         "RequestStatusHistory",
         back_populates="changed_by",
         foreign_keys="RequestStatusHistory.changed_by_user_id",
         lazy="dynamic",
+        passive_deletes=True,
     )
     collections = db.relationship(
         "Collection",
         back_populates="user",
         foreign_keys="Collection.user_id",
         lazy="dynamic",
+        passive_deletes=True,
     )
 
     def set_password(self, raw_password: str) -> None:

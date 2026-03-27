@@ -182,6 +182,19 @@ def edit_user(user_id):
 @role_required("administrador")
 def delete_user(user_id):
     user = User.query.get_or_404(user_id)
+    
+    # Check for related data that prevents deletion due to NOT NULL constraints
+    has_requests = user.created_stock_requests.first() is not None
+    has_collections = user.collections.first() is not None
+    has_history = user.status_changes.first() is not None
+    
+    if has_requests or has_collections or has_history:
+        flash(
+            "Não é possível deletar este usuário pois ele possui registros vinculados (requisições, coletas ou histórico). Recomenda-se inativar o usuário.",
+            "danger",
+        )
+        return redirect(url_for("admin.users"))
+
     db.session.delete(user)
     db.session.commit()
     flash("Usuario deletado com sucesso.", "success")
